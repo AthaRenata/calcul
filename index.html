@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Form Pemesanan Barang</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="bg-gray-50">
+    <div id="formContainer" class="pb-24 pt-20">
+      <form id="orderForm" class="pb-24 pt-20">
+        <!-- Header Sticky -->
+        <div class="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+          <div class="max-w-4xl mx-auto px-4 py-4">
+            <div
+              class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
+            >
+              <input
+                type="text"
+                name="pemesan"
+                placeholder="Nama pemesan"
+                class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+              />
+              <button
+                type="button"
+                onclick="addRow()"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95 sm:w-auto"
+              >
+                + Tambah Item
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Items Container -->
+        <div class="max-w-4xl mx-auto px-4 py-4" id="itemsContainer">
+          <!-- Item akan ditambahkan di sini -->
+        </div>
+
+        <!-- Footer Sticky -->
+        <div
+          class="fixed bottom-0 left-0 right-0 bg-white shadow-lg z-50 border-t-2 border-gray-200"
+        >
+          <div
+            class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center"
+          >
+            <button
+              type="button"
+              onclick="resetForm()"
+              class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95"
+            >
+              Reset
+            </button>
+            <button
+              type="submit"
+              class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition active:scale-95"
+            >
+              Kirim
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportContainer" class="hidden pb-24 pt-20">
+      <div class="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
+            Laporan Pemesanan
+          </h2>
+        </div>
+      </div>
+
+      <!-- Report Content -->
+      <div class="max-w-4xl mx-auto px-4 py-4">
+        <div
+          class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500"
+        >
+          <div
+            id="reportText"
+            class="whitespace-pre-wrap font-mono text-sm sm:text-base bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4 leading-relaxed"
+          >
+            <!-- Laporan akan ditampilkan di sini -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Sticky -->
+      <div
+        class="fixed bottom-0 left-0 right-0 bg-white shadow-lg z-50 border-t-2 border-gray-200"
+      >
+        <div
+          class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center gap-3"
+        >
+          <button
+            type="button"
+            onclick="copyReport()"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95"
+          >
+            📋 Copy
+          </button>
+          <button
+            type="button"
+            onclick="backToForm()"
+            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95"
+          >
+            ← Kembali
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let rowCount = 0;
+
+      function addRow() {
+        const container = document.getElementById("itemsContainer");
+        rowCount++;
+
+        const itemDiv = document.createElement("div");
+        itemDiv.className =
+          "bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-blue-500 transition hover:shadow-lg";
+        itemDiv.dataset.rowId = rowCount;
+
+        itemDiv.innerHTML = `
+                <div class="space-y-3">
+                    <!-- Row number -->
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">Item #${rowCount}</span>
+                        <button type="button" onclick="removeRow(${rowCount})" class="text-red-500 hover:text-red-700 text-sm font-semibold">Hapus</button>
+                    </div>
+
+                    <!-- Nama Barang -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Nama Barang</label>
+                        <input 
+                            type="text" 
+                            name="nama" 
+                            placeholder="Contoh: Wortel, Brambang, dll" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                            required
+                        >
+                    </div>
+
+                    <!-- Grid 2 Kolom (Satuan, Jumlah) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Jumlah</label>
+                            <input 
+                                type="number" 
+                                name="jumlah" 
+                                placeholder="0" 
+                                min="0" 
+                                class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                                required
+                            >
+                        </div>
+                         <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Satuan</label>
+                            <input 
+                                type="text" 
+                                name="satuan" 
+                                placeholder="Pcs, Kg, dll" 
+                                class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Harga -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Harga (Rp)</label>
+                        <input 
+                            type="number" 
+                            name="harga" 
+                            placeholder="0" 
+                            min="0" 
+                            class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                            required
+                        >
+                    </div>
+                </div>
+            `;
+
+        container.appendChild(itemDiv);
+      }
+
+      function removeRow(rowId) {
+        const row = document.querySelector(`[data-row-id="${rowId}"]`);
+        if (row) {
+          row.classList.add("opacity-0", "scale-95");
+          setTimeout(() => row.remove(), 300);
+        }
+      }
+
+      // Tambah item pertama secara default
+      addRow();
+
+      // Form submission handler
+      document
+        .getElementById("orderForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const pemesan = document
+            .querySelector('input[name="pemesan"]')
+            .value.trim();
+          if (!pemesan) {
+            alert("Nama pemesan harus diisi!");
+            return;
+          }
+
+          const items = [];
+          let totalHarga = 0;
+          let itemNumber = 1;
+
+          document.querySelectorAll("#itemsContainer > div").forEach((row) => {
+            const nama = row.querySelector('input[name="nama"]').value.trim();
+            const satuan = row
+              .querySelector('input[name="satuan"]')
+              .value.trim();
+            const jumlah = row
+              .querySelector('input[name="jumlah"]')
+              .value.trim();
+            const harga =
+              parseInt(row.querySelector('input[name="harga"]').value) || 0;
+
+            if (nama && satuan && jumlah) {
+              items.push({
+                number: itemNumber,
+                jumlah: jumlah,
+                satuan: satuan,
+                nama: nama,
+                harga: harga,
+                subtotal: harga,
+              });
+              totalHarga += harga;
+              itemNumber++;
+            }
+          });
+
+          if (items.length === 0) {
+            alert("Tambahkan minimal satu item!");
+            return;
+          }
+
+          // Format laporan
+          let laporan = pemesan + "\n";
+          items.forEach((item) => {
+            laporan += `${item.number}. ${item.jumlah}${item.satuan} ${
+              item.nama
+            } ${item.harga.toLocaleString("id-ID")}\n`;
+          });
+          laporan += `\nTotal ${totalHarga.toLocaleString("id-ID")}`;
+
+          // Tampilkan report
+          showReport(laporan);
+        });
+
+      function showReport(laporan) {
+        document.getElementById("formContainer").classList.add("hidden");
+        document.getElementById("reportContainer").classList.remove("hidden");
+        document.getElementById("reportText").textContent = laporan;
+      }
+
+      function copyReport() {
+        const reportText = document.getElementById("reportText").textContent;
+        const btn = document.querySelector('button[onclick="copyReport()"]');
+
+        navigator.clipboard
+          .writeText(reportText)
+          .then(() => {
+            // Tampilkan notifikasi copy berhasil
+            const originalText = btn.textContent;
+            btn.textContent = "✓ Tersalin!";
+            btn.classList.add("bg-green-600");
+            btn.classList.remove("bg-blue-600");
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.classList.remove("bg-green-600");
+              btn.classList.add("bg-blue-600");
+            }, 2000);
+          })
+          .catch(() => {
+            alert("Gagal menyalin laporan");
+          });
+      }
+
+      function backToForm() {
+        document.getElementById("reportContainer").classList.add("hidden");
+        document.getElementById("formContainer").classList.remove("hidden");
+      }
+
+      function resetForm() {
+        if (confirm("Yakin ingin menghapus semua data?")) {
+          document.querySelector('input[name="pemesan"]').value = "";
+          document.getElementById("itemsContainer").innerHTML = "";
+          rowCount = 0;
+          addRow();
+        }
+      }
+    </script>
+  </body>
+</html>
