@@ -28,6 +28,13 @@
               >
                 + Tambah Item
               </button>
+              <button
+                type="button"
+                onclick="showPasteModal()"
+                class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95 sm:w-auto"
+              >
+                📋 Paste Laporan
+              </button>
             </div>
           </div>
         </div>
@@ -107,6 +114,49 @@
           >
             ← Kembali
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paste Modal -->
+    <div id="pasteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+        <div class="bg-purple-600 text-white p-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold">📋 Paste Laporan untuk Edit</h3>
+            <button onclick="closePasteModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
+          </div>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
+          <p class="text-gray-600 mb-4">Paste laporan pemesanan yang ingin Anda edit:</p>
+          <textarea
+            id="pasteTextarea"
+            rows="12"
+            placeholder="Paste laporan di sini...
+Contoh:
+Pesanan Bu Nur
+1. 2 Kg Wortel 10000
+2. 5 Pcs Brambang 25000
+
+Total 35000"
+            class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-sm font-mono focus:outline-none focus:border-purple-500 transition"
+          ></textarea>
+          <div class="mt-4 flex gap-3">
+            <button
+              type="button"
+              onclick="parsePastedReport()"
+              class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95"
+            >
+              ✓ Parse & Edit
+            </button>
+            <button
+              type="button"
+              onclick="closePasteModal()"
+              class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95"
+            >
+              Batal
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -298,6 +348,181 @@
           rowCount = 0;
           addRow();
         }
+      }
+
+      function showPasteModal() {
+        document.getElementById("pasteModal").classList.remove("hidden");
+        document.getElementById("pasteTextarea").value = "";
+        document.getElementById("pasteTextarea").focus();
+      }
+
+      function closePasteModal() {
+        document.getElementById("pasteModal").classList.add("hidden");
+      }
+
+      function parsePastedReport() {
+        const pastedText = document.getElementById("pasteTextarea").value.trim();
+        
+        if (!pastedText) {
+          alert("Masukkan laporan yang ingin di-parse!");
+          return;
+        }
+
+        try {
+          // Parse the report
+          const lines = pastedText.split('\n').map(line => line.trim()).filter(line => line);
+          
+          if (lines.length < 2) {
+            alert("Format laporan tidak valid!");
+            return;
+          }
+
+          // Extract pemesan name from first line
+          // Format: "Pesanan Bu Nur" or just "Bu Nur"
+          let pemesan = lines[0];
+          if (pemesan.toLowerCase().startsWith('pesanan ')) {
+            pemesan = pemesan.substring(8).trim();
+          }
+
+          // Clear existing form
+          document.querySelector('input[name="pemesan"]').value = pemesan;
+          document.getElementById("itemsContainer").innerHTML = "";
+          rowCount = 0;
+
+          // Parse items
+          let foundItems = false;
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Skip total line
+            if (line.toLowerCase().startsWith('total')) {
+              break;
+            }
+
+            // Parse item line
+            // Format: "1. 2 Kg Wortel 10000" or "1. 2 Wortel 10000"
+            const itemMatch = line.match(/^(\d+)\.\s+(.+)$/);
+            if (itemMatch) {
+              const itemText = itemMatch[2].trim();
+              
+              // Split by last space to get price
+              const parts = itemText.split(/\s+/);
+              if (parts.length < 2) continue;
+              
+              const harga = parts[parts.length - 1].replace(/[.,]/g, '');
+              const itemParts = parts.slice(0, -1);
+              
+              // Parse jumlah, satuan, nama
+              let jumlah = itemParts[0];
+              let satuan = '';
+              let nama = '';
+              
+              if (itemParts.length >= 3) {
+                // Has satuan: "2 Kg Wortel"
+                satuan = itemParts[1];
+                nama = itemParts.slice(2).join(' ');
+              } else if (itemParts.length === 2) {
+                // No satuan: "2 Wortel"
+                nama = itemParts.slice(1).join(' ');
+              } else {
+                continue;
+              }
+
+              // Add item to form
+              addRowWithData(jumlah, satuan, nama, harga);
+              foundItems = true;
+            }
+          }
+
+          if (!foundItems) {
+            alert("Tidak ada item yang berhasil di-parse!");
+            return;
+          }
+
+          // Close modal and scroll to top
+          closePasteModal();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          
+          alert(`✓ Berhasil memuat ${rowCount} item!\nAnda bisa mengedit pesanan sekarang.`);
+
+        } catch (error) {
+          console.error(error);
+          alert("Gagal mem-parse laporan. Pastikan format laporan benar!");
+        }
+      }
+
+      function addRowWithData(jumlah, satuan, nama, harga) {
+        const container = document.getElementById("itemsContainer");
+        rowCount++;
+
+        const itemDiv = document.createElement("div");
+        itemDiv.className =
+          "bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-blue-500 transition hover:shadow-lg";
+        itemDiv.dataset.rowId = rowCount;
+
+        itemDiv.innerHTML = `
+                <div class="space-y-3">
+                    <!-- Row number -->
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">Item #${rowCount}</span>
+                        <button type="button" onclick="removeRow(${rowCount})" class="text-red-500 hover:text-red-700 text-sm font-semibold">Hapus</button>
+                    </div>
+
+                    <!-- Nama Barang -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Nama Barang</label>
+                        <input 
+                            type="text" 
+                            name="nama" 
+                            placeholder="Contoh: Wortel, Brambang, dll" 
+                            value="${nama}"
+                            class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                            required
+                        >
+                    </div>
+
+                    <!-- Grid 2 Kolom (Satuan, Jumlah) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Jumlah</label>
+                            <input 
+                                type="text" 
+                                name="jumlah" 
+                                placeholder="0" 
+                                value="${jumlah}"
+                                class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                                required
+                            >
+                        </div>
+                         <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Satuan (opsional)</label>
+                            <input 
+                                type="text" 
+                                name="satuan" 
+                                placeholder="Pcs, Kg, dll" 
+                                value="${satuan}"
+                                class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Harga -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Harga (Rp)</label>
+                        <input 
+                            type="number" 
+                            name="harga" 
+                            placeholder="0" 
+                            min="0" 
+                            value="${harga}"
+                            class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                            required
+                        >
+                    </div>
+                </div>
+            `;
+
+        container.appendChild(itemDiv);
       }
     </script>
   </body>
