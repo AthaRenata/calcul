@@ -30,7 +30,7 @@
               </button>
               <button
                 type="button"
-                onclick="showPasteModal()"
+                onclick="pasteAndParseClipboard()"
                 class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition active:scale-95 sm:w-auto"
               >
                 📋 Paste Laporan
@@ -119,16 +119,28 @@
     </div>
 
     <!-- Paste Modal -->
-    <div id="pasteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+    <div
+      id="pasteModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+      >
         <div class="bg-purple-600 text-white p-4">
           <div class="flex items-center justify-between">
             <h3 class="text-xl font-bold">📋 Paste Laporan untuk Edit</h3>
-            <button onclick="closePasteModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
+            <button
+              onclick="closePasteModal()"
+              class="text-white hover:text-gray-200 text-2xl"
+            >
+              &times;
+            </button>
           </div>
         </div>
         <div class="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
-          <p class="text-gray-600 mb-4">Paste laporan pemesanan yang ingin Anda edit:</p>
+          <p class="text-gray-600 mb-4">
+            Paste laporan pemesanan yang ingin Anda edit:
+          </p>
           <textarea
             id="pasteTextarea"
             rows="12"
@@ -231,7 +243,8 @@ Total 35000"
                 </div>
             `;
 
-        container.appendChild(itemDiv);
+        // Prepend so newest item appears at the top
+        container.prepend(itemDiv);
       }
 
       function removeRow(rowId) {
@@ -259,11 +272,15 @@ Total 35000"
             return;
           }
 
+          // Ambil dari bawah ke atas agar laporan mengikuti urutan kartu terbawah dulu
+          const rows = Array.from(
+            document.querySelectorAll("#itemsContainer > div")
+          ).reverse();
           const items = [];
           let totalHarga = 0;
-          let itemNumber = 1;
+          let itemNumber = 1; // ascending numbering sesuai urutan bawah → atas
 
-          document.querySelectorAll("#itemsContainer > div").forEach((row) => {
+          rows.forEach((row) => {
             const nama = row.querySelector('input[name="nama"]').value.trim();
             const satuan = row
               .querySelector('input[name="satuan"]')
@@ -296,8 +313,8 @@ Total 35000"
           // Format laporan
           let laporan = "Pesanan " + pemesan + "\n";
           items.forEach((item) => {
-            const satuanText = item.satuan ? item.satuan : "";
-            laporan += `${item.number}. ${item.jumlah} ${satuanText} ${
+            const satuanText = item.satuan ? " " + item.satuan : "";
+            laporan += `${item.number}. ${item.jumlah}${satuanText} ${
               item.nama
             } ${item.harga.toLocaleString("id-ID")}\n`;
           });
@@ -361,74 +378,93 @@ Total 35000"
       }
 
       function parsePastedReport() {
-        const pastedText = document.getElementById("pasteTextarea").value.trim();
-        
+        const pastedText = document.getElementById("pasteTextarea").value;
+        parseReportText(pastedText);
+      }
+
+      function pasteAndParseClipboard() {
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            const cleaned = (text || "").trim();
+            if (!cleaned) {
+              alert(
+                "Clipboard kosong atau tidak berisi laporan. Silakan paste manual."
+              );
+              showPasteModal();
+              return;
+            }
+
+            document.getElementById("pasteTextarea").value = cleaned;
+            parseReportText(cleaned);
+          })
+          .catch(() => {
+            alert(
+              "Tidak bisa mengakses clipboard. Izinkan akses atau paste manual."
+            );
+            showPasteModal();
+          });
+      }
+
+      function parseReportText(rawText) {
+        const pastedText = (rawText || "").trim();
+
         if (!pastedText) {
           alert("Masukkan laporan yang ingin di-parse!");
           return;
         }
 
         try {
-          // Parse the report
-          const lines = pastedText.split('\n').map(line => line.trim()).filter(line => line);
-          
+          const lines = pastedText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line);
+
           if (lines.length < 2) {
             alert("Format laporan tidak valid!");
             return;
           }
 
-          // Extract pemesan name from first line
-          // Format: "Pesanan Bu Nur" or just "Bu Nur"
           let pemesan = lines[0];
-          if (pemesan.toLowerCase().startsWith('pesanan ')) {
+          if (pemesan.toLowerCase().startsWith("pesanan ")) {
             pemesan = pemesan.substring(8).trim();
           }
 
-          // Clear existing form
           document.querySelector('input[name="pemesan"]').value = pemesan;
           document.getElementById("itemsContainer").innerHTML = "";
           rowCount = 0;
 
-          // Parse items
           let foundItems = false;
           for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
-            
-            // Skip total line
-            if (line.toLowerCase().startsWith('total')) {
+
+            if (line.toLowerCase().startsWith("total")) {
               break;
             }
 
-            // Parse item line
-            // Format: "1. 2 Kg Wortel 10000" or "1. 2 Wortel 10000"
             const itemMatch = line.match(/^(\d+)\.\s+(.+)$/);
             if (itemMatch) {
               const itemText = itemMatch[2].trim();
-              
-              // Split by last space to get price
+
               const parts = itemText.split(/\s+/);
               if (parts.length < 2) continue;
-              
-              const harga = parts[parts.length - 1].replace(/[.,]/g, '');
+
+              const harga = parts[parts.length - 1].replace(/[.,]/g, "");
               const itemParts = parts.slice(0, -1);
-              
-              // Parse jumlah, satuan, nama
+
               let jumlah = itemParts[0];
-              let satuan = '';
-              let nama = '';
-              
+              let satuan = "";
+              let nama = "";
+
               if (itemParts.length >= 3) {
-                // Has satuan: "2 Kg Wortel"
                 satuan = itemParts[1];
-                nama = itemParts.slice(2).join(' ');
+                nama = itemParts.slice(2).join(" ");
               } else if (itemParts.length === 2) {
-                // No satuan: "2 Wortel"
-                nama = itemParts.slice(1).join(' ');
+                nama = itemParts.slice(1).join(" ");
               } else {
                 continue;
               }
 
-              // Add item to form
               addRowWithData(jumlah, satuan, nama, harga);
               foundItems = true;
             }
@@ -439,12 +475,12 @@ Total 35000"
             return;
           }
 
-          // Close modal and scroll to top
           closePasteModal();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          
-          alert(`✓ Berhasil memuat ${rowCount} item!\nAnda bisa mengedit pesanan sekarang.`);
+          window.scrollTo({ top: 0, behavior: "smooth" });
 
+          alert(
+            `✓ Berhasil memuat ${rowCount} item!\nAnda bisa mengedit pesanan sekarang.`
+          );
         } catch (error) {
           console.error(error);
           alert("Gagal mem-parse laporan. Pastikan format laporan benar!");
@@ -522,7 +558,8 @@ Total 35000"
                 </div>
             `;
 
-        container.appendChild(itemDiv);
+        // Prepend parsed item so order remains descending with newest on top
+        container.prepend(itemDiv);
       }
     </script>
   </body>
