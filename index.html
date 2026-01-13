@@ -287,11 +287,7 @@ Total 35000"
         });
         laporan += `\nTotal ${totalHarga.toLocaleString("id-ID")}`;
 
-        // Tambahkan catatan jika ada
-        const catatan = document.getElementById("catatanInput").value.trim();
-        if (catatan) {
-          laporan += `\n\nCatatan:\n${catatan}`;
-        }
+
 
         // Tampilkan report
         showReport(laporan);
