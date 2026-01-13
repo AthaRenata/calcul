@@ -14,18 +14,22 @@
       <!-- Sticky Header (Contains Input + Notes) -->
       <div class="sticky top-0 left-0 right-0 bg-gray-50 z-50 shadow-md">
         <div class="max-w-4xl mx-auto px-4 py-3 space-y-3">
-          <!-- Top Row: Input + Buttons -->
-          <div class="flex flex-row gap-2 items-center">
-            <input type="text" name="pemesan" placeholder="Nama pemesan"
-              class="flex-1 min-w-0 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition" />
-            <button type="button" onclick="addRow()"
-              class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg transition active:scale-95 text-sm whitespace-nowrap">
-              + Item
-            </button>
-            <button type="button" onclick="pasteAndParseClipboard()"
-              class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded-lg transition active:scale-95 text-sm whitespace-nowrap">
-              📋 Paste
-            </button>
+          <!-- Top Row: Date + Input + Buttons -->
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="date" id="orderDate"
+              class="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition w-full sm:w-auto" />
+            <div class="flex flex-1 gap-2">
+              <input type="text" name="pemesan" placeholder="Nama pemesan"
+                class="flex-1 min-w-0 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition" />
+              <button type="button" onclick="addRow()"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg transition active:scale-95 text-sm whitespace-nowrap">
+                + Item
+              </button>
+              <button type="button" onclick="pasteAndParseClipboard()"
+                class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded-lg transition active:scale-95 text-sm whitespace-nowrap">
+                📋 Paste
+              </button>
+            </div>
           </div>
 
           <!-- Catatan / Raw Data Section (Collapsible) -->
@@ -224,6 +228,10 @@ Total 35000"
     }
 
     // Tambah item pertama secara default
+    // Set Default Date to Today
+    const dateInput = document.getElementById("orderDate");
+    dateInput.valueAsDate = new Date();
+
     addRow();
 
     // Form submission handler
@@ -235,6 +243,8 @@ Total 35000"
         const pemesan = document
           .querySelector('input[name="pemesan"]')
           .value.trim();
+        const dateVal = document.getElementById("orderDate").value;
+
         if (!pemesan) {
           alert("Nama pemesan harus diisi!");
           return;
@@ -278,8 +288,17 @@ Total 35000"
           return;
         }
 
+        // Format Date
+        const dateObj = new Date(dateVal);
+        const dateStr = dateObj.toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+
         // Format laporan
-        let laporan = "Pesanan " + pemesan + "\n";
+        let laporan = `${dateStr}\nPesanan ${pemesan}\n`;
         items.forEach((item) => {
           const satuanText = item.satuan ? " " + item.satuan : "";
           laporan += `${item.number}. ${item.jumlah}${satuanText} ${item.nama
@@ -330,6 +349,7 @@ Total 35000"
     function resetForm() {
       if (confirm("Yakin ingin menghapus semua data?")) {
         document.querySelector('input[name="pemesan"]').value = "";
+        document.getElementById("orderDate").valueAsDate = new Date();
         document.getElementById("itemsContainer").innerHTML = "";
         document.getElementById("catatanInput").value = "";
         document.getElementById("catatanDetails").removeAttribute("open");
@@ -397,6 +417,19 @@ Total 35000"
         }
 
         let pemesan = lines[0];
+
+        // Coba deteksi jika baris pertama adalah tanggal (misal ada "Senin", "Minggu", etc)
+        const days = ["senin", "selasa", "rabu", "kamis", "jumat", "sabtu", "minggu"];
+        const firstLineLower = pemesan.toLowerCase();
+        const isDateLine = days.some(day => firstLineLower.includes(day)) || firstLineLower.match(/\d{1,2}\s+[a-z]+\s+\d{4}/);
+
+        if (isDateLine && lines.length > 1) {
+          // Jika baris pertama tanggal, ambil pemesan dari baris kedua
+          pemesan = lines[1];
+          // Kita tidak mem-parse tanggal dari teks untuk input date karena format bisa beragam,
+          // biarkan user set tanggal manual atau biarkan default hari ini.
+        }
+
         if (pemesan.toLowerCase().startsWith("pesanan ")) {
           pemesan = pemesan.substring(8).trim();
         }
